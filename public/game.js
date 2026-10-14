@@ -10,6 +10,8 @@ let currentRoom = null;
 let selectedTerritoryId = null;
 let soundEnabled = true;
 let isMyTurn = false;
+let isLocalGame = false;
+let localGameState = null;
 
 // Audio Synthesizer (Zero external dependencies)
 class SoundFX {
@@ -64,7 +66,6 @@ class SoundFX {
     if (!soundEnabled) return;
     this.init();
     if (!this.ctx) return;
-    const now = this.ctx.currentTime;
     [523.25, 659.25, 783.99].forEach((freq, i) => {
       setTimeout(() => this.playTone(freq, 'triangle', 0.25, 0.12), i * 90);
     });
@@ -106,10 +107,23 @@ const screenMenu = document.getElementById('screenMenu');
 const screenLobby = document.getElementById('screenLobby');
 const screenGame = document.getElementById('screenGame');
 
+const tabModeOnline = document.getElementById('tabModeOnline');
+const tabModeLocal = document.getElementById('tabModeLocal');
+const onlineModeContent = document.getElementById('onlineModeContent');
+const localModeContent = document.getElementById('localModeContent');
+
+const inviteBanner = document.getElementById('inviteBanner');
+const inviteRoomCodeTag = document.getElementById('inviteRoomCodeTag');
+const inviteNickInput = document.getElementById('inviteNickInput');
+const btnDirectJoin = document.getElementById('btnDirectJoin');
+
 const nicknameInput = document.getElementById('nicknameInput');
 const roomCodeInput = document.getElementById('roomCodeInput');
 const btnCreateRoom = document.getElementById('btnCreateRoom');
 const btnJoinRoom = document.getElementById('btnJoinRoom');
+
+const btnStartLocalGame = document.getElementById('btnStartLocalGame');
+const hotseatPrompt = document.getElementById('hotseatPrompt');
 
 const lobbyRoomCode = document.getElementById('lobbyRoomCode');
 const playerCount = document.getElementById('playerCount');
@@ -119,6 +133,8 @@ const btnAddBot = document.getElementById('btnAddBot');
 const btnStartGame = document.getElementById('btnStartGame');
 const btnLeaveRoom = document.getElementById('btnLeaveRoom');
 const btnCopyInvite = document.getElementById('btnCopyInvite');
+const btnOpenSecondPlayer = document.getElementById('btnOpenSecondPlayer');
+const qrCodeImg = document.getElementById('qrCodeImg');
 const hostSettingsBlock = document.getElementById('hostSettingsBlock');
 const guestWaitingNotice = document.getElementById('guestWaitingNotice');
 
@@ -167,27 +183,68 @@ function showToast(message) {
   toastEl.classList.remove('hidden');
   toastTimeout = setTimeout(() => {
     toastEl.classList.add('hidden');
-  }, 3000);
+  }, 3200);
 }
 
-// Auto-fill from URL param ?room=ABCD
+// Mode Switching (Online vs Local Hotseat)
+tabModeOnline.addEventListener('click', () => {
+  sfx.click();
+  tabModeOnline.classList.add('active');
+  tabModeLocal.classList.remove('active');
+  onlineModeContent.classList.add('active');
+  localModeContent.classList.remove('active');
+});
+
+tabModeLocal.addEventListener('click', () => {
+  sfx.click();
+  tabModeLocal.classList.add('active');
+  tabModeOnline.classList.remove('active');
+  localModeContent.classList.add('active');
+  onlineModeContent.classList.remove('active');
+});
+
+// Local player count buttons
+document.querySelectorAll('.count-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    sfx.click();
+    document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const count = parseInt(btn.dataset.count, 10);
+    document.getElementById('localGroup3').classList.toggle('hidden', count < 3);
+    document.getElementById('localGroup4').classList.toggle('hidden', count < 4);
+  });
+});
+
+// Auto-detect invite parameter ?room=ABCD
+let invitedRoomCode = null;
 window.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const roomParam = urlParams.get('room');
   if (roomParam) {
-    roomCodeInput.value = roomParam.trim().toUpperCase();
-    showToast(`Код комнаты ${roomCodeInput.value} вставлен! Введите имя и нажмите Войти`);
+    invitedRoomCode = roomParam.trim().toUpperCase();
+    roomCodeInput.value = invitedRoomCode;
+    inviteRoomCodeTag.textContent = invitedRoomCode;
+    inviteBanner.classList.remove('hidden');
+    showToast(`Вас пригласили в комнату ${invitedRoomCode}!`);
   }
 });
 
-// Colors definition
+btnDirectJoin.addEventListener('click', () => {
+  sfx.click();
+  const name = inviteNickInput.value.trim() || 'Игрок 2';
+  if (invitedRoomCode) {
+    socket.emit('joinRoom', { roomId: invitedRoomCode, playerName: name });
+  }
+});
+
+// Available Colors
 const AVAILABLE_COLORS = [
-  { name: 'Рубин', hex: '#EF4444' },
-  { name: 'Сапфир', hex: '#3B82F6' },
-  { name: 'Изумруд', hex: '#10B981' },
-  { name: 'Янтарь', hex: '#F59E0B' },
-  { name: 'Аметист', hex: '#8B5CF6' },
-  { name: 'Кибер-Розовый', hex: '#EC4899' }
+  { name: 'Рубин', hex: '#EF4444', border: '#B91C1C' },
+  { name: 'Сапфир', hex: '#3B82F6', border: '#1D4ED8' },
+  { name: 'Изумруд', hex: '#10B981', border: '#047857' },
+  { name: 'Янтарь', hex: '#F59E0B', border: '#B45309' },
+  { name: 'Аметист', hex: '#8B5CF6', border: '#6D28D9' },
+  { name: 'Кибер-Розовый', hex: '#EC4899', border: '#BE185D' }
 ];
 
 function renderColorPicker(selectedHex) {
@@ -199,17 +256,20 @@ function renderColorPicker(selectedHex) {
     opt.title = c.name;
     opt.addEventListener('click', () => {
       sfx.click();
-      socket.emit('changeColor', { colorHex: c.hex });
+      if (!isLocalGame) {
+        socket.emit('changeColor', { colorHex: c.hex });
+      }
     });
     colorPicker.appendChild(opt);
   });
 }
 
 // ------------------------------------------
-// LOBBY ACTIONS
+// LOBBY ACTIONS (ONLINE)
 // ------------------------------------------
 btnCreateRoom.addEventListener('click', () => {
   sfx.click();
+  isLocalGame = false;
   const name = nicknameInput.value.trim() || 'Командир';
   const activeSizeBtn = document.querySelector('.size-btn.active');
   const mapSize = activeSizeBtn ? activeSizeBtn.dataset.size : 'medium';
@@ -218,6 +278,7 @@ btnCreateRoom.addEventListener('click', () => {
 
 btnJoinRoom.addEventListener('click', () => {
   sfx.click();
+  isLocalGame = false;
   const code = roomCodeInput.value.trim().toUpperCase();
   const name = nicknameInput.value.trim() || 'Игрок';
   if (!code) {
@@ -235,6 +296,15 @@ btnCopyInvite.addEventListener('click', () => {
   }).catch(() => {
     prompt('Скопируйте ссылку на комнату:', inviteUrl);
   });
+});
+
+btnOpenSecondPlayer.addEventListener('click', () => {
+  sfx.click();
+  if (currentRoom) {
+    const inviteUrl = `${window.location.origin}/?room=${currentRoom.id}`;
+    window.open(inviteUrl, '_blank');
+    showToast('Вторая вкладка открыта! Вы можете протестировать бой вдвоем.');
+  }
 });
 
 btnAddBot.addEventListener('click', () => {
@@ -261,9 +331,7 @@ btnLeaveRoom.addEventListener('click', () => {
   window.location.href = window.location.origin;
 });
 
-// ------------------------------------------
-// LOBBY RENDER
-// ------------------------------------------
+// Update Lobby UI
 function updateLobbyUI(room) {
   currentRoom = room;
   lobbyRoomCode.textContent = room.id;
@@ -271,6 +339,10 @@ function updateLobbyUI(room) {
 
   const me = room.players.find(p => p.id === myPlayerId);
   const isHost = me ? me.isHost : false;
+
+  // Set QR code for instant smartphone join
+  const inviteUrl = `${window.location.origin}/?room=${room.id}`;
+  qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(inviteUrl)}`;
 
   // Host vs Guest UI
   document.querySelectorAll('.host-only').forEach(el => {
@@ -336,12 +408,124 @@ function updateLobbyUI(room) {
     renderColorPicker(me.color.hex);
   }
 
-  // Update map size buttons
   if (room.mapSize) {
     document.querySelectorAll('.size-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.size === room.mapSize);
     });
   }
+}
+
+// ------------------------------------------
+// LOCAL (HOTSEAT) MODE ENGINE
+// ------------------------------------------
+btnStartLocalGame.addEventListener('click', () => {
+  sfx.click();
+  isLocalGame = true;
+
+  const activeBtn = document.querySelector('.count-btn.active');
+  const count = parseInt(activeBtn ? activeBtn.dataset.count : 2, 10);
+
+  const localPlayers = [];
+  for (let i = 1; i <= count; i++) {
+    const nameInput = document.getElementById(`localName${i}`);
+    const name = (nameInput ? nameInput.value.trim() : '') || `Игрок ${i}`;
+    localPlayers.push({
+      id: `local_p_${i}`,
+      name: name,
+      color: AVAILABLE_COLORS[(i - 1) % AVAILABLE_COLORS.length],
+      isHost: (i === 1),
+      isBot: false
+    });
+  }
+
+  // Generate Map locally
+  const territories = generateLocalMap('medium', localPlayers);
+
+  currentRoom = {
+    id: 'LOCAL',
+    status: 'playing',
+    players: localPlayers,
+    gameState: {
+      territories,
+      currentTurnIndex: 0,
+      round: 1
+    }
+  };
+
+  showScreen(screenGame);
+  hotseatPrompt.classList.remove('hidden');
+  updateGameUI(currentRoom);
+  showToast(`⚔️ Битва на одном экране началась! Ход: ${localPlayers[0].name}`);
+  sfx.turnChime();
+});
+
+function generateLocalMap(sizeType, activePlayers) {
+  let cols = 6;
+  let rows = 4;
+  const territories = [];
+  let idCounter = 1;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const isCorner = (r === 0 && (c === 0 || c === cols - 1)) || 
+                       (r === rows - 1 && (c === 0 || c === cols - 1));
+      if (isCorner && Math.random() < 0.6) continue;
+
+      const xOffset = (r % 2 === 1) ? 0.5 : 0;
+      const x = (c + xOffset) / cols + 0.08;
+      const y = r / rows + 0.12;
+
+      territories.push({
+        id: idCounter++,
+        col: c,
+        row: r,
+        x: Math.round(x * 1000) / 1000,
+        y: Math.round(y * 1000) / 1000,
+        dice: 1 + Math.floor(Math.random() * 2),
+        owner: null,
+        neighbors: []
+      });
+    }
+  }
+
+  territories.forEach(t1 => {
+    territories.forEach(t2 => {
+      if (t1.id === t2.id) return;
+      const dr = t2.row - t1.row;
+      const dc = t2.col - t1.col;
+      const rEven = (t1.row % 2 === 0);
+
+      let isNeighbor = false;
+      if (dr === 0 && Math.abs(dc) === 1) isNeighbor = true;
+      if (Math.abs(dr) === 1) {
+        if (rEven) {
+          if (dc === 0 || dc === -1) isNeighbor = true;
+        } else {
+          if (dc === 0 || dc === 1) isNeighbor = true;
+        }
+      }
+
+      if (isNeighbor && !t1.neighbors.includes(t2.id)) {
+        t1.neighbors.push(t2.id);
+      }
+    });
+  });
+
+  const shuffled = [...territories].sort(() => Math.random() - 0.5);
+  const perPlayer = Math.max(2, Math.floor(territories.length / (activePlayers.length + 1)));
+
+  let assigned = 0;
+  activePlayers.forEach(p => {
+    for (let i = 0; i < perPlayer; i++) {
+      if (assigned < shuffled.length) {
+        const t = shuffled[assigned++];
+        t.owner = p.id;
+        t.dice = 2 + Math.floor(Math.random() * 2);
+      }
+    }
+  });
+
+  return territories;
 }
 
 // ------------------------------------------
@@ -368,11 +552,12 @@ function renderMap() {
   const SVG_HEIGHT = 650;
   const HEX_RADIUS = 52;
 
-  // Selected territory object
+  const activePlayer = currentRoom.players[currentRoom.gameState.currentTurnIndex];
+  const activePlayerId = isLocalGame ? (activePlayer ? activePlayer.id : null) : myPlayerId;
+
   const selectedTerritory = selectedTerritoryId ? territories.find(t => t.id === selectedTerritoryId) : null;
   const validTargets = selectedTerritory ? selectedTerritory.neighbors : [];
 
-  // Sort territories so selected is drawn last (on top)
   const sortedTerritories = [...territories].sort((a, b) => {
     if (a.id === selectedTerritoryId) return 1;
     if (b.id === selectedTerritoryId) return -1;
@@ -387,47 +572,43 @@ function renderMap() {
     g.setAttribute('class', 'territory-group');
     g.dataset.id = t.id;
 
-    // Determine color
-    let fillColor = '#1E293B'; // neutral slate
+    let fillColor = '#1E293B';
     let strokeColor = '#334155';
-    let isOwnerMe = false;
+    let isOwnerActive = false;
 
     if (t.owner) {
       const owner = currentRoom.players.find(p => p.id === t.owner);
       if (owner) {
         fillColor = owner.color.hex;
         strokeColor = owner.color.border || '#FFFFFF';
-        if (owner.id === myPlayerId) isOwnerMe = true;
+        if (owner.id === activePlayerId) isOwnerActive = true;
       }
     }
 
-    // Hexagon Polygon
     const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     polygon.setAttribute('points', getHexPoints(cx, cy, HEX_RADIUS));
     polygon.setAttribute('fill', fillColor);
     polygon.setAttribute('stroke', strokeColor);
 
     let classes = ['hex-cell'];
-    if (isMyTurn && isOwnerMe && t.dice > 1) {
+    if ((isMyTurn || isLocalGame) && isOwnerActive && t.dice > 1) {
       classes.push('selectable');
     }
     if (t.id === selectedTerritoryId) {
       classes.push('selected');
     }
-    if (selectedTerritory && validTargets.includes(t.id) && t.owner !== myPlayerId) {
+    if (selectedTerritory && validTargets.includes(t.id) && t.owner !== activePlayerId) {
       classes.push('attack-target');
     }
 
     polygon.setAttribute('class', classes.join(' '));
 
-    // Hex label: Army count / dice
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', cx);
     text.setAttribute('y', cy + 1);
     text.setAttribute('class', 'hex-label');
     text.textContent = t.dice;
 
-    // Small dice icon text above count
     const diceIcon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     diceIcon.setAttribute('x', cx);
     diceIcon.setAttribute('y', cy - 18);
@@ -439,7 +620,6 @@ function renderMap() {
     g.appendChild(diceIcon);
     g.appendChild(text);
 
-    // Click handler for territory
     g.addEventListener('click', () => onTerritoryClick(t));
 
     gameMapSvg.appendChild(g);
@@ -447,39 +627,113 @@ function renderMap() {
 }
 
 function onTerritoryClick(territory) {
-  if (!isMyTurn) return;
+  const gameState = currentRoom.gameState;
+  const currentPlayer = currentRoom.players[gameState.currentTurnIndex];
+  const activePlayerId = isLocalGame ? currentPlayer.id : myPlayerId;
 
-  const territories = currentRoom.gameState.territories;
+  if (!isLocalGame && !isMyTurn) return;
 
-  // Case 1: Clicking our own territory with > 1 dice -> Select it
-  if (territory.owner === myPlayerId && territory.dice > 1) {
+  const territories = gameState.territories;
+
+  // Case 1: Select owned territory with > 1 dice
+  if (territory.owner === activePlayerId && territory.dice > 1) {
     sfx.select();
-    if (selectedTerritoryId === territory.id) {
-      selectedTerritoryId = null; // deselect
-    } else {
-      selectedTerritoryId = territory.id;
-    }
+    selectedTerritoryId = (selectedTerritoryId === territory.id) ? null : territory.id;
     renderMap();
     return;
   }
 
-  // Case 2: We have selected territory and click an adjacent enemy/neutral territory -> Attack!
+  // Case 2: Attack adjacent target
   if (selectedTerritoryId) {
     const selected = territories.find(t => t.id === selectedTerritoryId);
-    if (selected && selected.neighbors.includes(territory.id) && territory.owner !== myPlayerId) {
-      // Execute attack
+    if (selected && selected.neighbors.includes(territory.id) && territory.owner !== activePlayerId) {
       sfx.attackClash();
-      socket.emit('attack', { fromId: selected.id, toId: territory.id });
+
+      if (isLocalGame) {
+        executeLocalAttack(selected.id, territory.id);
+      } else {
+        socket.emit('attack', { fromId: selected.id, toId: territory.id });
+      }
       selectedTerritoryId = null;
       renderMap();
       return;
     }
   }
 
-  // Clicked elsewhere
+  // Deselect
   if (selectedTerritoryId) {
     selectedTerritoryId = null;
     renderMap();
+  }
+}
+
+// Local Attack Execution
+function executeLocalAttack(fromId, toId) {
+  const gameState = currentRoom.gameState;
+  const territories = gameState.territories;
+  const source = territories.find(t => t.id === fromId);
+  const target = territories.find(t => t.id === toId);
+
+  const attackerRolls = [];
+  let attackerSum = 0;
+  for (let i = 0; i < source.dice; i++) {
+    const roll = 1 + Math.floor(Math.random() * 6);
+    attackerRolls.push(roll);
+    attackerSum += roll;
+  }
+
+  const defenderRolls = [];
+  let defenderSum = 0;
+  for (let i = 0; i < target.dice; i++) {
+    const roll = 1 + Math.floor(Math.random() * 6);
+    defenderRolls.push(roll);
+    defenderSum += roll;
+  }
+
+  const attackerWon = attackerSum > defenderSum;
+  const prevOwner = target.owner;
+
+  if (attackerWon) {
+    target.owner = source.owner;
+    target.dice = source.dice - 1;
+    source.dice = 1;
+  } else {
+    source.dice = 1;
+  }
+
+  const battleResult = {
+    attackerId: source.owner,
+    prevTargetOwner: prevOwner,
+    toId: target.id,
+    attackerRolls,
+    defenderRolls,
+    attackerSum,
+    defenderSum,
+    attackerWon
+  };
+
+  showBattleClash(battleResult);
+  checkLocalGameOver();
+  updateGameUI(currentRoom);
+}
+
+function checkLocalGameOver() {
+  const territories = currentRoom.gameState.territories;
+  const aliveIds = new Set(territories.filter(t => t.owner !== null).map(t => t.owner));
+
+  if (aliveIds.size === 1) {
+    const winnerId = [...aliveIds][0];
+    const winner = currentRoom.players.find(p => p.id === winnerId);
+    sfx.victoryFanfare();
+    gameOverModal.classList.remove('hidden');
+
+    document.getElementById('winnerTitle').textContent = `🏆 ПОБЕДИЛ ${winner.name}!`;
+    document.getElementById('winnerTitle').style.color = winner.color.hex;
+    document.getElementById('winnerSubtitle').textContent = `Все сектора карты захвачены!`;
+    document.getElementById('victoryStats').innerHTML = `
+      <div>⏳ Раундов сыграно: ${currentRoom.gameState.round}</div>
+      <div>🗺️ Захвачено секторов: ${territories.length}</div>
+    `;
   }
 }
 
@@ -494,17 +748,22 @@ function updateGameUI(room) {
   roundNumber.textContent = gameState.round;
 
   const currentPlayer = room.players[gameState.currentTurnIndex];
-  isMyTurn = currentPlayer && currentPlayer.id === myPlayerId;
+  isMyTurn = !isLocalGame && (currentPlayer && currentPlayer.id === myPlayerId);
 
   // Update Turn Status Bar
   if (currentPlayer) {
-    turnPlayerName.textContent = isMyTurn ? 'ВАШ ХОД! ⚔️' : currentPlayer.name;
+    if (isLocalGame) {
+      turnPlayerName.textContent = `Ход: ${currentPlayer.name} (${currentPlayer.color.name})`;
+      hotseatPrompt.innerHTML = `👉 Передайте устройство игроку <strong>${currentPlayer.name}</strong>!`;
+    } else {
+      turnPlayerName.textContent = isMyTurn ? 'ВАШ ХОД! ⚔️' : currentPlayer.name;
+    }
     turnPlayerName.style.color = currentPlayer.color.hex;
     turnIndicatorDot.style.backgroundColor = currentPlayer.color.hex;
     turnIndicatorDot.style.boxShadow = `0 0 15px ${currentPlayer.color.hex}`;
   }
 
-  btnEndTurn.disabled = !isMyTurn;
+  btnEndTurn.disabled = (!isMyTurn && !isLocalGame);
 
   // Update Sidebar Players
   const totalTerritories = gameState.territories.length;
@@ -525,7 +784,7 @@ function updateGameUI(room) {
       <div class="player-card-header">
         <span class="player-card-name" style="color: ${p.color.hex}">
           <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color.hex}"></span>
-          ${p.name} ${p.id === myPlayerId ? '(Вы)' : ''} ${isEliminated ? '💀' : ''}
+          ${p.name} ${(!isLocalGame && p.id === myPlayerId) ? '(Вы)' : ''} ${isEliminated ? '💀' : ''}
         </span>
         <span class="player-stats-numbers">
           <strong>${count}</strong> зон • <strong>${totalArmies}</strong> 🎲
@@ -544,15 +803,55 @@ function updateGameUI(room) {
 
 // End Turn Button
 btnEndTurn.addEventListener('click', () => {
-  if (!isMyTurn) return;
   sfx.click();
   selectedTerritoryId = null;
-  socket.emit('endTurn');
+
+  if (isLocalGame) {
+    advanceLocalTurn();
+  } else {
+    socket.emit('endTurn');
+  }
 });
+
+function advanceLocalTurn() {
+  const gameState = currentRoom.gameState;
+  const territories = gameState.territories;
+  const players = currentRoom.players;
+
+  // Give reinforcements to current player
+  const currPlayer = players[gameState.currentTurnIndex];
+  const playerTerritories = territories.filter(t => t.owner === currPlayer.id);
+  const bonus = Math.max(2, Math.floor(playerTerritories.length / 2));
+  
+  let left = bonus;
+  const eligible = playerTerritories.filter(t => t.dice < 8);
+  while (left > 0 && eligible.some(t => t.dice < 8)) {
+    const valid = eligible.filter(t => t.dice < 8);
+    if (valid.length === 0) break;
+    const chosen = valid[Math.floor(Math.random() * valid.length)];
+    chosen.dice++;
+    left--;
+  }
+
+  // Next player
+  let nextIdx = (gameState.currentTurnIndex + 1) % players.length;
+  let attempts = 0;
+  while (!territories.some(t => t.owner === players[nextIdx].id) && attempts < players.length) {
+    nextIdx = (nextIdx + 1) % players.length;
+    attempts++;
+  }
+
+  if (nextIdx <= gameState.currentTurnIndex) {
+    gameState.round++;
+  }
+  gameState.currentTurnIndex = nextIdx;
+
+  sfx.turnChime();
+  updateGameUI(currentRoom);
+}
 
 // Battle Clash Popup Animation
 function showBattleClash(battle) {
-  const territories = currentRoom.gameState.territories;
   const attacker = currentRoom.players.find(p => p.id === battle.attackerId);
   const defender = battle.prevTargetOwner ? currentRoom.players.find(p => p.id === battle.prevTargetOwner) : null;
 
@@ -570,7 +869,6 @@ function showBattleClash(battle) {
   batDefName.textContent = defender ? defender.name : 'Нейтрал';
   batDefName.style.color = defender ? defender.color.hex : '#94A3B8';
 
-  // Render dice cubes
   batAtkDice.innerHTML = '';
   battle.attackerRolls.forEach(val => {
     const cube = document.createElement('div');
@@ -593,18 +891,15 @@ function showBattleClash(battle) {
   if (battle.attackerWon) {
     batVerdict.textContent = `Победа атакующего! (${battle.attackerSum} против ${battle.defenderSum})`;
     batVerdict.style.color = '#10B981';
-    if (battle.attackerId === myPlayerId) sfx.winBattle();
-    else sfx.loseBattle();
+    if (!isLocalGame && battle.attackerId === myPlayerId) sfx.winBattle();
   } else {
     batVerdict.textContent = `Защитник отбил атаку! (${battle.defenderSum} против ${battle.attackerSum})`;
     batVerdict.style.color = '#EF4444';
-    if (battle.attackerId === myPlayerId) sfx.loseBattle();
-    else sfx.winBattle();
+    if (!isLocalGame && battle.attackerId === myPlayerId) sfx.loseBattle();
   }
 
   battleModal.classList.remove('hidden');
 
-  // Add to battle log
   addBattleLogEntry(
     battle.attackerWon 
       ? `⚔️ <strong>${batAtkName.textContent}</strong> захватил сектор #${battle.toId} у ${batDefName.textContent} (${battle.attackerSum} : ${battle.defenderSum})`
@@ -640,7 +935,11 @@ document.querySelectorAll('.sidebar-tab').forEach(tab => {
 document.querySelectorAll('.react-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const emoji = btn.dataset.emoji;
-    socket.emit('sendReaction', { emoji });
+    if (!isLocalGame) {
+      socket.emit('sendReaction', { emoji });
+    } else {
+      spawnFloatingEmoji(emoji);
+    }
   });
 });
 
@@ -659,7 +958,11 @@ chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const text = chatInput.value.trim();
   if (text) {
-    socket.emit('sendChatMessage', { text });
+    if (!isLocalGame) {
+      socket.emit('sendChatMessage', { text });
+    } else {
+      addChatMessage('Игрок', text, '#3B82F6');
+    }
     chatInput.value = '';
   }
 });
@@ -683,7 +986,11 @@ function escapeHtml(str) {
 // Game Over & Restart
 document.getElementById('btnPlayAgain').addEventListener('click', () => {
   gameOverModal.classList.add('hidden');
-  socket.emit('restartGame');
+  if (isLocalGame) {
+    btnStartLocalGame.click();
+  } else {
+    socket.emit('restartGame');
+  }
 });
 
 document.getElementById('btnBackToMenu').addEventListener('click', () => {
@@ -691,7 +998,7 @@ document.getElementById('btnBackToMenu').addEventListener('click', () => {
 });
 
 // ------------------------------------------
-// SOCKET.IO LISTENERS
+// SOCKET.IO LISTENERS (ONLINE)
 // ------------------------------------------
 socket.on('roomCreated', ({ room, playerId }) => {
   myPlayerId = playerId;
@@ -699,7 +1006,7 @@ socket.on('roomCreated', ({ room, playerId }) => {
   window.history.pushState({}, '', `?room=${room.id}`);
   showScreen(screenLobby);
   updateLobbyUI(room);
-  showToast(`Комната ${room.id} создана! Ссылка готова для отправки.`);
+  showToast(`Комната ${room.id} создана! Ссылка и QR-код готовы.`);
 });
 
 socket.on('roomJoined', ({ room, playerId }) => {
@@ -723,6 +1030,7 @@ socket.on('roomUpdated', (room) => {
 
 socket.on('gameStarted', ({ room, currentTurnPlayerId, currentTurnPlayerName }) => {
   currentRoom = room;
+  hotseatPrompt.classList.add('hidden');
   showScreen(screenGame);
   updateGameUI(room);
   showToast('⚔️ Игра началась! Захватывайте сектора!');
@@ -738,11 +1046,7 @@ socket.on('gameRestarted', () => {
 
 socket.on('timerTick', ({ secondsLeft }) => {
   timerSeconds.textContent = secondsLeft;
-  if (secondsLeft <= 5) {
-    timerSeconds.style.color = '#EF4444';
-  } else {
-    timerSeconds.style.color = '#06B6D4';
-  }
+  timerSeconds.style.color = (secondsLeft <= 5) ? '#EF4444' : '#06B6D4';
 });
 
 socket.on('turnChanged', ({ currentTurnPlayerId, currentTurnPlayerName, round, previousPlayerReinforcements, territories, timedOut }) => {
@@ -760,7 +1064,7 @@ socket.on('turnChanged', ({ currentTurnPlayerId, currentTurnPlayerName, round, p
   }
 
   if (previousPlayerReinforcements > 0) {
-    addBattleLogEntry(`🛡️ Завершение хода: игрок получил +${previousPlayerReinforcements} армий подкрепления.`);
+    addBattleLogEntry(`🛡️ Завершение хода: игрок получил +${previousPlayerReinforcements} армий.`);
   }
 
   updateGameUI(currentRoom);
@@ -790,7 +1094,7 @@ socket.on('gameOver', ({ winner, stats }) => {
   const victoryStats = document.getElementById('victoryStats');
 
   if (winner) {
-    winnerTitle.textContent = winner.id === myPlayerId ? '🏆 ВЫ ПОБЕДИЛИ!' : `🏆 ПОБЕДИЛ ${winner.name}!`;
+    winnerTitle.textContent = (!isLocalGame && winner.id === myPlayerId) ? '🏆 ВЫ ПОБЕДИЛИ!' : `🏆 ПОБЕДИЛ ${winner.name}!`;
     winnerTitle.style.color = winner.color ? winner.color.hex : '#FCD34D';
     winnerSubtitle.textContent = `Империя полностью подчинена!`;
   }

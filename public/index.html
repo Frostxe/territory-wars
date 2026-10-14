@@ -38,32 +38,96 @@
     <!-- SCREEN 1: MAIN MENU -->
     <main id="screenMenu" class="screen active">
       <div class="menu-card glass-panel">
-        <div class="badge-tag">Онлайн мультиплеер</div>
-        <h1 class="hero-title">Захвати весь мир с друзьями</h1>
-        <p class="hero-desc">Легкая пошаговая стратегия. Создай комнату, отправь ссылку другу и докажи, кто главный тактик!</p>
         
-        <div class="input-group">
-          <label for="nicknameInput">Твоё имя / позывной</label>
-          <input type="text" id="nicknameInput" placeholder="Например, Генерал_Алекс" maxlength="16" autocomplete="off" value="Командир">
+        <!-- Invite Banner if came via ?room=... -->
+        <div id="inviteBanner" class="invite-banner hidden">
+          <div class="badge-tag">Вас пригласили в игру!</div>
+          <h2 class="invite-title">Комната <span id="inviteRoomCodeTag">----</span></h2>
+          <p class="invite-subtitle">Ваш друг ждет вас в лобби битвы</p>
+          <div class="input-group">
+            <label for="inviteNickInput">Ваше имя в игре:</label>
+            <input type="text" id="inviteNickInput" placeholder="Игрок 2" maxlength="16" value="Игрок 2">
+          </div>
+          <button id="btnDirectJoin" class="btn btn-primary btn-glow btn-lg btn-block">
+            <span>🚀 Присоединиться к другу</span>
+          </button>
+          <div class="divider"><span>или войти в меню</span></div>
         </div>
 
-        <div class="menu-buttons">
-          <button id="btnCreateRoom" class="btn btn-primary btn-glow">
-            <span>✨ Создать комнату</span>
-          </button>
-          
-          <div class="divider"><span>или по коду</span></div>
+        <!-- Mode Tabs -->
+        <div class="mode-tabs">
+          <button id="tabModeOnline" class="mode-tab active" data-mode="online">🌐 По ссылке (Онлайн)</button>
+          <button id="tabModeLocal" class="mode-tab" data-mode="local">👥 На одном экране (Hotseat)</button>
+        </div>
 
-          <div class="join-row">
-            <input type="text" id="roomCodeInput" placeholder="Код (например ABCD)" maxlength="4" autocomplete="off" style="text-transform: uppercase;">
-            <button id="btnJoinRoom" class="btn btn-secondary">Войти</button>
+        <!-- ONLINE MODE CONTENT -->
+        <div id="onlineModeContent" class="mode-content active">
+          <div class="badge-tag">Онлайн мультиплеер</div>
+          <h1 class="hero-title">Захвати весь мир с друзьями</h1>
+          <p class="hero-desc">Создай комнату, отправь ссылку или QR-код другу и сразитесь в реальном времени!</p>
+          
+          <div class="input-group">
+            <label for="nicknameInput">Твоё имя / позывной</label>
+            <input type="text" id="nicknameInput" placeholder="Например, Генерал_Алекс" maxlength="16" autocomplete="off" value="Командир">
+          </div>
+
+          <div class="menu-buttons">
+            <button id="btnCreateRoom" class="btn btn-primary btn-glow btn-lg">
+              <span>✨ Создать комнату онлайн</span>
+            </button>
+            
+            <div class="divider"><span>или войти по коду</span></div>
+
+            <div class="join-row">
+              <input type="text" id="roomCodeInput" placeholder="Код (напр. ABCD)" maxlength="4" autocomplete="off" style="text-transform: uppercase;">
+              <button id="btnJoinRoom" class="btn btn-secondary">Войти</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- LOCAL (PASS & PLAY) MODE CONTENT -->
+        <div id="localModeContent" class="mode-content">
+          <div class="badge-tag badge-local">Игра вдвоем на одном экране</div>
+          <h1 class="hero-title">Битва на одном устройстве</h1>
+          <p class="hero-desc">Играйте вдвоем, втроем или вчетвером за одним ПК или смартфоном по очереди!</p>
+          
+          <div class="local-settings">
+            <label>Количество игроков:</label>
+            <div class="local-count-selector">
+              <button class="count-btn active" data-count="2">2 игрока</button>
+              <button class="count-btn" data-count="3">3 игрока</button>
+              <button class="count-btn" data-count="4">4 игрока</button>
+            </div>
+
+            <div id="localPlayersInputs" class="local-names-grid">
+              <div class="input-group">
+                <label style="color: #EF4444">🔴 Игрок 1</label>
+                <input type="text" id="localName1" value="Игрок 1" maxlength="14">
+              </div>
+              <div class="input-group">
+                <label style="color: #3B82F6">🔵 Игрок 2</label>
+                <input type="text" id="localName2" value="Игрок 2" maxlength="14">
+              </div>
+              <div class="input-group hidden" id="localGroup3">
+                <label style="color: #10B981">🟢 Игрок 3</label>
+                <input type="text" id="localName3" value="Игрок 3" maxlength="14">
+              </div>
+              <div class="input-group hidden" id="localGroup4">
+                <label style="color: #F59E0B">🟡 Игрок 4</label>
+                <input type="text" id="localName4" value="Игрок 4" maxlength="14">
+              </div>
+            </div>
+
+            <button id="btnStartLocalGame" class="btn btn-accent btn-glow btn-lg btn-block">
+              <span>⚔️ Начать битву на одном экране</span>
+            </button>
           </div>
         </div>
 
         <div class="quick-features">
           <div class="feature-item"><span>⚡</span> Без регистрации</div>
           <div class="feature-item"><span>📱</span> На ПК и телефонах</div>
-          <div class="feature-item"><span>🤖</span> Можно играть с ботами</div>
+          <div class="feature-item"><span>🤖</span> Можно с ботами</div>
         </div>
       </div>
     </main>
@@ -76,9 +140,25 @@
             <div class="badge-tag">Ожидание игроков</div>
             <h2 class="section-title">Комната <span id="lobbyRoomCode" class="room-code-tag">----</span></h2>
           </div>
-          <button id="btnCopyInvite" class="btn btn-invite">
-            <span>🔗 Скопировать ссылку</span>
-          </button>
+          <div class="header-invite-btns">
+            <button id="btnCopyInvite" class="btn btn-invite">
+              <span>🔗 Скопировать ссылку</span>
+            </button>
+            <button id="btnOpenSecondPlayer" class="btn btn-secondary btn-sm" title="Открыть второго игрока в новой вкладке для теста на этом ПК">
+              <span>🧪 Тест: 2-й игрок во вкладке</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- QR Code & Link Callout -->
+        <div class="invite-callout">
+          <div class="callout-text">
+            <strong>Как позвать друга:</strong>
+            <p>Отправьте скопированную ссылку другу, или пусть он отсканирует этот QR-код камерой смартфона:</p>
+          </div>
+          <div class="qr-box">
+            <img id="qrCodeImg" alt="QR-код комнаты" class="qr-image" src="">
+          </div>
         </div>
 
         <div class="lobby-columns">
@@ -142,6 +222,11 @@
             </div>
           </div>
 
+          <!-- Hotseat banner -->
+          <div id="hotseatPrompt" class="hotseat-prompt hidden">
+            <span>👉 Передайте ход следующему игроку!</span>
+          </div>
+
           <div class="turn-timer-box">
             <span class="timer-icon">⏳</span>
             <span class="timer-seconds" id="timerSeconds">40</span>s
@@ -166,7 +251,7 @@
             </div>
             
             <div class="map-wrapper" id="mapWrapper">
-              <!-- Rendered via Canvas/SVG in game.js -->
+              <!-- Rendered via SVG in game.js -->
               <svg id="gameMapSvg" class="game-map-svg" viewBox="0 0 1000 650"></svg>
             </div>
 

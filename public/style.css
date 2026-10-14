@@ -1276,3 +1276,188 @@ input[type="text"]:focus {
   opacity: 0;
   transform: translateY(20px);
 }
+
+/* MODE SWITCHER TABS */
+.mode-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: var(--radius-md);
+  padding: 5px;
+  margin-bottom: 22px;
+  gap: 6px;
+}
+
+.mode-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-main);
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.mode-tab.active {
+  background: rgba(59, 130, 246, 0.25);
+  color: var(--text-main);
+  border: 1px solid var(--accent-blue);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.mode-content {
+  display: none;
+  animation: fadeIn 0.25s ease;
+}
+
+.mode-content.active {
+  display: block;
+}
+
+/* INVITE BANNER */
+.invite-banner {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 22px;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+}
+
+.invite-banner.hidden {
+  display: none;
+}
+
+.invite-title {
+  font-size: 1.4rem;
+  font-weight: 900;
+  margin-bottom: 4px;
+}
+
+.invite-subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+/* LOCAL HOTSEAT SETTINGS */
+.badge-local {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: var(--accent-green) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+.local-settings {
+  text-align: left;
+}
+
+.local-settings label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.local-count-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.count-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-glass);
+  color: var(--text-muted);
+  padding: 10px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.count-btn.active {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: var(--accent-green);
+  color: white;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.local-names-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.local-names-grid .input-group.hidden {
+  display: none;
+}
+
+/* LOBBY CALLOUT & QR CODE */
+.header-invite-btns {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.invite-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 22px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.callout-text strong {
+  color: var(--accent-cyan);
+  font-size: 0.95rem;
+}
+
+.callout-text p {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: 4px;
+  max-width: 500px;
+}
+
+.qr-box {
+  background: white;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-image {
+  width: 90px;
+  height: 90px;
+  display: block;
+}
+
+/* HOTSEAT TURN PROMPT IN TOPBAR */
+.hotseat-prompt {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(239, 68, 68, 0.25));
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #FCD34D;
+  animation: pulseDot 1.2s infinite;
+}
+
+.hotseat-prompt.hidden {
+  display: none;
+}

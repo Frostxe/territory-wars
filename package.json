@@ -7,11 +7,18 @@
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
-  "keywords": ["game", "multiplayer", "territory-wars", "socketio", "dice-wars"],
+  "keywords": [
+    "game",
+    "multiplayer",
+    "territory-wars",
+    "socketio",
+    "dice-wars"
+  ],
   "author": "Frostxe",
   "license": "MIT",
   "dependencies": {
     "express": "^4.19.2",
+    "localtunnel": "^2.0.2",
     "socket.io": "^4.7.5"
   }
 }
