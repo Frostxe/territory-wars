@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Territory Wars — Битва за территории онлайн</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient background glow -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-grid"></div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Emoji Floaters Container -->
+  <div id="emoji-container" class="emoji-container"></div>
+
+  <div class="app-container">
+    
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="logo">
+        <span class="logo-icon">⚔️</span>
+        <span class="logo-text">TERRITORY<span class="highlight">WARS</span></span>
+      </div>
+      <div class="header-actions">
+        <button id="soundToggleBtn" class="icon-btn" title="Вкл/Выкл звук">🔊</button>
+        <button id="rulesBtn" class="icon-btn" title="Правила игры">❓</button>
+      </div>
+    </header>
+
+    <!-- SCREEN 1: MAIN MENU -->
+    <main id="screenMenu" class="screen active">
+      <div class="menu-card glass-panel">
+        <div class="badge-tag">Онлайн мультиплеер</div>
+        <h1 class="hero-title">Захвати весь мир с друзьями</h1>
+        <p class="hero-desc">Легкая пошаговая стратегия. Создай комнату, отправь ссылку другу и докажи, кто главный тактик!</p>
+        
+        <div class="input-group">
+          <label for="nicknameInput">Твоё имя / позывной</label>
+          <input type="text" id="nicknameInput" placeholder="Например, Генерал_Алекс" maxlength="16" autocomplete="off" value="Командир">
+        </div>
+
+        <div class="menu-buttons">
+          <button id="btnCreateRoom" class="btn btn-primary btn-glow">
+            <span>✨ Создать комнату</span>
+          </button>
+          
+          <div class="divider"><span>или по коду</span></div>
+
+          <div class="join-row">
+            <input type="text" id="roomCodeInput" placeholder="Код (например ABCD)" maxlength="4" autocomplete="off" style="text-transform: uppercase;">
+            <button id="btnJoinRoom" class="btn btn-secondary">Войти</button>
+          </div>
+        </div>
+
+        <div class="quick-features">
+          <div class="feature-item"><span>⚡</span> Без регистрации</div>
+          <div class="feature-item"><span>📱</span> На ПК и телефонах</div>
+          <div class="feature-item"><span>🤖</span> Можно играть с ботами</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- SCREEN 2: LOBBY -->
+    <section id="screenLobby" class="screen">
+      <div class="lobby-card glass-panel">
+        <div class="lobby-header">
+          <div>
+            <div class="badge-tag">Ожидание игроков</div>
+            <h2 class="section-title">Комната <span id="lobbyRoomCode" class="room-code-tag">----</span></h2>
+          </div>
+          <button id="btnCopyInvite" class="btn btn-invite">
+            <span>🔗 Скопировать ссылку</span>
+          </button>
+        </div>
+
+        <div class="lobby-columns">
+          <!-- Players list -->
+          <div class="lobby-players-col">
+            <div class="col-title">Игроки в лобби (<span id="playerCount">1</span>/6)</div>
+            <div id="lobbyPlayersList" class="players-grid">
+              <!-- Rendered via JS -->
+            </div>
+            
+            <div class="lobby-player-actions">
+              <button id="btnAddBot" class="btn btn-outline btn-sm">
+                <span>🤖 Добавить бота</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Room settings & Colors -->
+          <div class="lobby-settings-col">
+            <div class="settings-block">
+              <label>Твой цвет флага</label>
+              <div id="colorPicker" class="color-picker-grid">
+                <!-- Color options via JS -->
+              </div>
+            </div>
+
+            <div class="settings-block host-only" id="hostSettingsBlock">
+              <label>Размер карты</label>
+              <div class="map-size-selector">
+                <button class="size-btn" data-size="small">Малая (20)</button>
+                <button class="size-btn active" data-size="medium">Стандарт (28)</button>
+                <button class="size-btn" data-size="large">Большая (36)</button>
+              </div>
+            </div>
+
+            <div class="lobby-start-box">
+              <button id="btnStartGame" class="btn btn-primary btn-glow btn-lg btn-block host-only">
+                <span>⚔️ В БОЙ (Начать игру)</span>
+              </button>
+              <div id="guestWaitingNotice" class="guest-notice hidden">
+                Ожидаем, пока создатель запустит игру...
+              </div>
+              <button id="btnLeaveRoom" class="btn btn-text btn-block">Покинуть лобби</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREEN 3: GAMEPLAY -->
+    <section id="screenGame" class="screen">
+      <div class="game-layout">
+        
+        <!-- Game Header / Turn Status Bar -->
+        <div class="game-topbar glass-panel">
+          <div class="turn-status-box" id="turnStatusBox">
+            <div class="turn-indicator-dot" id="turnIndicatorDot"></div>
+            <div class="turn-text-info">
+              <span class="turn-label" id="turnLabel">Ход игрока</span>
+              <strong class="turn-player-name" id="turnPlayerName">Загрузка...</strong>
+            </div>
+          </div>
+
+          <div class="turn-timer-box">
+            <span class="timer-icon">⏳</span>
+            <span class="timer-seconds" id="timerSeconds">40</span>s
+          </div>
+
+          <div class="round-counter">Раунд <span id="roundNumber">1</span></div>
+
+          <div class="topbar-actions">
+            <button id="btnEndTurn" class="btn btn-accent btn-glow" disabled>
+              <span>Завершить ход 🛡️</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Main Arena Area -->
+        <div class="game-content-row">
+          
+          <!-- Map Canvas / SVG -->
+          <div class="map-container glass-panel" id="mapContainer">
+            <div class="map-instructions" id="mapInstructions">
+              Нажмите на свою территорию с 2+ армиями, затем на соседнюю вражескую для атаки!
+            </div>
+            
+            <div class="map-wrapper" id="mapWrapper">
+              <!-- Rendered via Canvas/SVG in game.js -->
+              <svg id="gameMapSvg" class="game-map-svg" viewBox="0 0 1000 650"></svg>
+            </div>
+
+            <!-- Reaction bar on map -->
+            <div class="reaction-bar">
+              <button class="react-btn" data-emoji="🔥">🔥</button>
+              <button class="react-btn" data-emoji="⚔️">⚔️</button>
+              <button class="react-btn" data-emoji="😂">😂</button>
+              <button class="react-btn" data-emoji="👑">👑</button>
+              <button class="react-btn" data-emoji="🛡️">🛡️</button>
+              <button class="react-btn" data-emoji="💀">💀</button>
+            </div>
+          </div>
+
+          <!-- Sidebar: Leaderboard & Logs & Chat -->
+          <aside class="game-sidebar glass-panel">
+            
+            <div class="sidebar-tabs">
+              <button class="sidebar-tab active" data-tab="players">Игроки</button>
+              <button class="sidebar-tab" data-tab="log">События</button>
+              <button class="sidebar-tab" data-tab="chat">Чат</button>
+            </div>
+
+            <!-- Tab 1: Players & Territory share -->
+            <div class="tab-pane active" id="tabPlayers">
+              <div id="gamePlayersList" class="game-players-list">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+
+            <!-- Tab 2: Battle Log -->
+            <div class="tab-pane" id="tabLog">
+              <div id="battleLog" class="battle-log">
+                <div class="log-entry system">Битва началась! Захватите все сектора.</div>
+              </div>
+            </div>
+
+            <!-- Tab 3: Live Chat -->
+            <div class="tab-pane" id="tabChat">
+              <div id="chatMessages" class="chat-messages">
+                <div class="chat-msg system">Комната создана. Общайтесь и координируйте атаки!</div>
+              </div>
+              <form id="chatForm" class="chat-input-form">
+                <input type="text" id="chatInput" placeholder="Сообщение..." maxlength="100" autocomplete="off">
+                <button type="submit" class="btn btn-sm btn-primary">➤</button>
+              </form>
+            </div>
+
+          </aside>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- BATTLE CLASH OVERLAY MODAL -->
+  <div id="battleModal" class="modal-overlay hidden">
+    <div class="modal-card battle-card glass-panel">
+      <div class="battle-header">БИТВА ЗА ТЕРРИТОРИЮ</div>
+      
+      <div class="battle-clash-grid">
+        <div class="battle-fighter attacker" id="battleAttacker">
+          <div class="fighter-name" id="batAtkName">Атакующий</div>
+          <div class="dice-box" id="batAtkDice">
+            <!-- Dice elements -->
+          </div>
+          <div class="dice-total" id="batAtkSum">--</div>
+        </div>
+
+        <div class="battle-vs">VS</div>
+
+        <div class="battle-fighter defender" id="battleDefender">
+          <div class="fighter-name" id="batDefName">Защитник</div>
+          <div class="dice-box" id="batDefDice">
+            <!-- Dice elements -->
+          </div>
+          <div class="dice-total" id="batDefSum">--</div>
+        </div>
+      </div>
+
+      <div class="battle-verdict" id="batVerdict">Бросок кубиков...</div>
+    </div>
+  </div>
+
+  <!-- GAME OVER MODAL -->
+  <div id="gameOverModal" class="modal-overlay hidden">
+    <div class="modal-card victory-card glass-panel">
+      <div class="trophy-icon">🏆</div>
+      <h2 class="victory-title" id="winnerTitle">ПОБЕДА!</h2>
+      <p class="victory-subtitle" id="winnerSubtitle">Игрок покорил все территории!</p>
+
+      <div class="victory-stats" id="victoryStats">
+        <!-- Rendered via JS -->
+      </div>
+
+      <div class="modal-actions">
+        <button id="btnPlayAgain" class="btn btn-primary btn-glow btn-lg">Сыграть снова</button>
+        <button id="btnBackToMenu" class="btn btn-secondary">В главное меню</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RULES MODAL -->
+  <div id="rulesModal" class="modal-overlay hidden">
+    <div class="modal-card rules-card glass-panel">
+      <div class="rules-header">
+        <h2>📜 Как играть в Territory Wars</h2>
+        <button id="closeRulesBtn" class="close-btn">&times;</button>
+      </div>
+      <div class="rules-body">
+        <div class="rule-step">
+          <div class="rule-num">1</div>
+          <div class="rule-text"><strong>Цель:</strong> Захватить все сектора на карте или разгромить всех соперников.</div>
+        </div>
+        <div class="rule-step">
+          <div class="rule-num">2</div>
+          <div class="rule-text"><strong>Атака:</strong> В свой ход кликните на свою территорию (на ней должно быть 2+ армии), затем на соседнюю вражескую или нейтральную.</div>
+        </div>
+        <div class="rule-step">
+          <div class="rule-num">3</div>
+          <div class="rule-text"><strong>Бросок кубиков:</strong> Количество армий = количество кубиков d6. Побеждает тот, у кого сумма очков больше. При равенстве побеждает защитник.</div>
+        </div>
+        <div class="rule-step">
+          <div class="rule-num">4</div>
+          <div class="rule-text"><strong>Подкрепления:</strong> В конце вашего хода вы получаете новые армии в зависимости от размера вашей соединённой империи (максимум 8 на сектор).</div>
+        </div>
+      </div>
+      <button id="btnGotRules" class="btn btn-primary btn-block">Понятно, к бою!</button>
+    </div>
+  </div>
+
+  <!-- Socket.IO client script -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Main Game script -->
+  <script src="game.js"></script>
+</body>
+</html>
