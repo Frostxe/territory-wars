@@ -291,6 +291,7 @@ function nextTurn(room, timedOut = false) {
   const nextPlayer = room.players[nextIdx];
 
   io.to(room.id).emit('turnChanged', {
+    currentTurnIndex: nextIdx,
     currentTurnPlayerId: nextPlayer.id,
     currentTurnPlayerName: nextPlayer.name,
     round: room.gameState.round,

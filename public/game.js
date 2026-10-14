@@ -1049,10 +1049,16 @@ socket.on('timerTick', ({ secondsLeft }) => {
   timerSeconds.style.color = (secondsLeft <= 5) ? '#EF4444' : '#06B6D4';
 });
 
-socket.on('turnChanged', ({ currentTurnPlayerId, currentTurnPlayerName, round, previousPlayerReinforcements, territories, timedOut }) => {
+socket.on('turnChanged', ({ currentTurnIndex, currentTurnPlayerId, currentTurnPlayerName, round, previousPlayerReinforcements, territories, timedOut }) => {
   if (currentRoom && currentRoom.gameState) {
     currentRoom.gameState.round = round;
     currentRoom.gameState.territories = territories;
+    if (typeof currentTurnIndex === 'number') {
+      currentRoom.gameState.currentTurnIndex = currentTurnIndex;
+    } else {
+      const idx = currentRoom.players.findIndex(p => p.id === currentTurnPlayerId);
+      if (idx !== -1) currentRoom.gameState.currentTurnIndex = idx;
+    }
   }
 
   isMyTurn = (currentTurnPlayerId === myPlayerId);
