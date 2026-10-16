@@ -71,18 +71,7 @@ npx localtunnel --port 3000
 
 ---
 
-## 📦 Как загрузить на свой GitHub
 
-```bash
-git init
-git add .
-git commit -m "feat: first release of Territory Wars multiplayer game"
-git branch -M main
-git remote add origin https://github.com/ВАШ_НИКНЕЙМ/territory-wars.git
-git push -u origin main
-```
-
----
 
 ## 🛠️ Стек технологий
 - **Бэкенд**: Node.js, Express, Socket.IO
